@@ -233,3 +233,62 @@ def calculateMetrics(repo_data, heavy_metrics):
         "total_issues": total_issues,
         "closed_issues": closed_issues
     }
+
+# Teste com 100 repositórios com todas as métricas
+
+print("\nTeste inicial com 100 repositórios (incluindo métricas pesadas):")
+
+basic_repos_sample = getBasicRepositories(100)
+
+if basic_repos_sample:
+    print(f"✓ Informações básicas coletadas: {len(basic_repos_sample)} repositórios")
+
+    # Coletar métricas pesadas para os primeiros 100 repositórios
+    print("Coletando métricas pesadas para os 100 repositórios...")
+    complete_repos_sample = []
+
+    for i, repo in enumerate(basic_repos_sample):
+        owner = repo["owner"]["login"]
+        name = repo["name"]
+
+        print(f"\nProcessando {i+1}/100: {owner}/{name}")
+
+        # Buscar métricas pesadas
+        heavy_metrics = getHeavyMetrics(owner, name)
+
+        # Calcular métricas
+        calculated_metrics = calculateMetrics(repo, heavy_metrics)
+
+        # Imprimir todas as métricas obtidas
+        print(f"  └─ Métricas:")
+        print(f"     • Idade: {calculated_metrics['repo_age_days']} dias ({calculated_metrics['repo_age_days']/365:.1f} anos)")
+        print(f"     • PRs aceitas: {calculated_metrics['merged_pull_requests']}")
+        print(f"     • Releases: {calculated_metrics['total_releases']}")
+        print(f"     • Dias desde última atualização: {calculated_metrics['days_since_last_update']}")
+        print(f"     • Linguagem primária: {calculated_metrics['primary_language']}")
+        print(f"     • Taxa de issues fechadas: {calculated_metrics['closed_issues_ratio']:.2%} ({calculated_metrics['closed_issues']}/{calculated_metrics['total_issues']})")
+
+        # Combinar todos os dados
+        complete_repo = {
+            "name": name,
+            "owner": owner,
+            "url": repo["url"],
+            "stars": repo["stargazerCount"],
+            "forks": repo["forkCount"],
+            "watchers": repo["watchers"]["totalCount"],
+            "created_at": repo["createdAt"],
+            "updated_at": repo["updatedAt"],
+            "description": repo["description"] or "",
+            **calculated_metrics
+        }
+
+        complete_repos_sample.append(complete_repo)
+
+        # Pausa entre requisições para evitar rate limit
+        if (i + 1) % 10 == 0:
+            print(f"\n⏸ Pausa após {i+1} repositórios...")
+            time.sleep(2)
+
+    print(f"\n✓ Sucesso! Coletados {len(complete_repos_sample)} repositórios com todas as métricas")
+else:
+    print("✗ Erro na coleta de repositórios")
