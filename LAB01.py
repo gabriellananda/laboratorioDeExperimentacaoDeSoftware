@@ -193,3 +193,43 @@ def getHeavyMetrics(owner, name):
         "total_issues": repo_data["issues"]["totalCount"],
         "closed_issues": repo_data["closedIssues"]["totalCount"]
     }
+
+#Função para calcular métricas
+def calculateMetrics(repo_data, heavy_metrics):
+  
+    #Calcula as métricas solicitadas
+    #Argumentos: repoData (dict): Dados básicos do repositório | heavyMetrics (dict): Métricas pesadas do repositório
+    #Retornos: dict: Métricas calculadas
+
+    # 1. Idade do repositório (em dias)
+    created_at = datetime.fromisoformat(repo_data["createdAt"].replace('Z', '+00:00'))
+    repo_age_days = (datetime.now(timezone.utc) - created_at).days
+
+    # 2. Total de pull requests aceitas (merged)
+    merged_prs = heavy_metrics["merged_pull_requests"]
+
+    # 3. Total de releases
+    total_releases = heavy_metrics["releases"]
+
+    # 4. Tempo até a última atualização (em dias)
+    updated_at = datetime.fromisoformat(repo_data["updatedAt"].replace('Z', '+00:00'))
+    days_since_update = (datetime.now(timezone.utc) - updated_at).days
+
+    # 5. Linguagem primária
+    primary_language = repo_data["primaryLanguage"]["name"] if repo_data["primaryLanguage"] else "Unknown"
+
+    # 6. Razão entre issues fechadas e total de issues
+    total_issues = heavy_metrics["total_issues"]
+    closed_issues = heavy_metrics["closed_issues"]
+    closed_issues_ratio = closed_issues / total_issues if total_issues > 0 else 0
+
+    return {
+        "repo_age_days": repo_age_days,
+        "merged_pull_requests": merged_prs,
+        "total_releases": total_releases,
+        "days_since_last_update": days_since_update,
+        "primary_language": primary_language,
+        "closed_issues_ratio": closed_issues_ratio,
+        "total_issues": total_issues,
+        "closed_issues": closed_issues
+    }
