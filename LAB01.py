@@ -403,3 +403,30 @@ def collectRepositoriesWithMetrics(total_repos=1000):
            time.sleep(5)
 
    return all_repositories
+
+# Coletar todos os repositórios
+print("Iniciando coleta completa...")
+
+repositories = collectRepositoriesWithMetrics(1000)
+
+# Salvar em CSV
+if repositories:
+    csv_filename = "github_top_1000_repositories.csv"
+
+    fieldnames = [
+        "name", "owner", "url", "stars", "forks", "watchers",
+        "created_at", "updated_at", "description", "repo_age_days",
+        "merged_pull_requests", "total_releases", "days_since_last_update",
+        "primary_language", "closed_issues_ratio", "total_issues", "closed_issues"
+    ]
+
+    with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
+        #Permite escrever linhas no CSV a partir de dicionários. | Diz qual deve ser a ordem das colunas no CSV.
+        writer.writeheader()
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames) 
+        writer.writerows(repositories)
+
+    print(f"\n✓ Dados salvos em {csv_filename}")
+
+else:
+    print("✗ Erro na coleta completa de repositórios")
