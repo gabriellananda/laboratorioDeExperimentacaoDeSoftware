@@ -430,3 +430,44 @@ if repositories:
 
 else:
     print("✗ Erro na coleta completa de repositórios")
+
+if repositories:
+    # Carregar dados para análise
+    df = pd.DataFrame(repositories)
+
+    # Análise estatística detalhada
+    print("\n=== ANÁLISE ESTATÍSTICA DETALHADA ===")
+
+    print(f"\n1. MÉTRICAS DESCRITIVAS:")
+    metrics_summary = df[['repo_age_days', 'merged_pull_requests', 'total_releases',
+                         'days_since_last_update', 'closed_issues_ratio']].describe()
+    print(metrics_summary)
+
+    print(f"\n2. CORRELAÇÕES ENTRE MÉTRICAS:")
+    correlations = df[['stars', 'repo_age_days', 'merged_pull_requests', 'total_releases',
+                      'days_since_last_update', 'closed_issues_ratio']].corr()
+    print(correlations.round(3))
+
+    print(f"\n3. ANÁLISE POR LINGUAGEM (TOP 5):")
+    for lang in df['primary_language'].value_counts().head(5).index:
+        lang_df = df[df['primary_language'] == lang]
+        print(f"\n   {lang}:")
+        print(f"   • Quantidade: {len(lang_df)} repositórios")
+        print(f"   • Estrelas médias: {lang_df['stars'].mean():.0f}")
+        print(f"   • Idade média: {lang_df['repo_age_days'].mean()/365:.1f} anos")
+        print(f"   • Taxa média de issues fechadas: {lang_df['closed_issues_ratio'].mean():.2%}")
+
+    print(f"\n4. REPOSITÓRIOS MAIS ATIVOS (atualizados nos últimos 30 dias):")
+    active_repos = df[df['days_since_last_update'] <= 30]
+    print(f"   • {len(active_repos)} repositórios ({len(active_repos)/len(df)*100:.1f}%)")
+
+    print(f"\n5. REPOSITÓRIOS COM ALTA TAXA DE RESOLUÇÃO DE ISSUES (>90%):")
+    high_resolution = df[df['closed_issues_ratio'] > 0.9]
+    print(f"   • {len(high_resolution)} repositórios ({len(high_resolution)/len(df)*100:.1f}%)")
+
+    print("\n✓ Análise completa finalizada!")
+    print("✓ Gráficos salvos como 'github_repositories_analysis.png'")
+    print("✓ Dados salvos como 'github_top_1000_repositories.csv'")
+
+else:
+    print("✗ Não foi possível realizar a análise - dados não disponíveis")
