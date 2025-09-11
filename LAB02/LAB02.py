@@ -23,3 +23,38 @@ HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Content-Type": "application/json"
 }
+
+# Queries GraphQL
+BASIC_REPOS_QUERY = """
+query($first: Int!, $after: String) {
+  search(query: "language:Java stars:>1 sort:stars-desc", type: REPOSITORY, first: $first, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      ... on Repository {
+        name
+        owner { login }
+        url
+        stargazerCount
+        createdAt
+        updatedAt
+      }
+    }
+  }
+  rateLimit {
+    remaining
+    resetAt
+  }
+}
+"""
+
+HEAVY_METRICS_QUERY = """
+query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: [MERGED]) { totalCount }
+    releases { totalCount }
+  }
+}
+"""
