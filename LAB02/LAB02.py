@@ -167,3 +167,48 @@ def countJavaLOC(repo_path):
                         elif line_strip != "":
                             loc += 1
     return loc, comment_lines
+
+#Execução Principal
+if __name__ == "__main__":
+    repositories = getBasicRepositories(1000)
+    final_data = []
+
+    for i, repo in enumerate(repositories, start=1):
+        print(f"\n[{i}/{len(repositories)}] Processando {repo['owner']['login']}/{repo['name']}")
+
+        # 1) Métricas de atividade
+        heavy = getHeavyMetrics(repo['owner']['login'], repo['name'])
+        time.sleep(1)  # para não estourar rate limit
+
+        # 2) Clonar e contar LOC
+        repo_path = cloneRepository(repo['url'], CLONE_DIR)
+        if repo_path:
+            loc, comments = countJavaLOC(repo_path)
+        else:
+            loc, comments = 0, 0
+
+        # 3) Adicionar dados ao CSV
+        final_data.append({
+            "name": repo["name"],
+            "owner": repo["owner"]["login"],
+            "url": repo["url"],
+            "stars": repo["stargazerCount"],
+            "createdAt": repo["createdAt"],
+            "updatedAt": repo["updatedAt"],
+            "merged_pull_requests": heavy["merged_pull_requests"],
+            "releases": heavy["releases"],
+            "loc": loc,
+            "comment_lines": comments
+        })
+
+    # Salvar CSV final com as métricas de processo
+    csv_filename = "github_java_repositories_full_metrics.csv"
+    with open(csv_filename, "w", newline="", encoding="utf-8") as csvfile:
+        fieldnames = ["name", "owner", "url", "stars", "createdAt", "updatedAt",
+                      "merged_pull_requests", "releases", "loc", "comment_lines"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in final_data:
+            writer.writerow(row)
+
+    print(f"\n✓ Todas as métricas salvas em {csv_filename}")
