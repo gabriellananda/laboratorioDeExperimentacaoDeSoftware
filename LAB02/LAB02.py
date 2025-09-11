@@ -115,3 +115,15 @@ def getBasicRepositories(limit=100):
 
     print(f"✓ Coletados {len(repositories)} repositórios com informações básicas")
     return repositories
+
+#Função para pegar métricas detalhadas
+def getHeavyMetrics(owner, name):
+    variables = {"owner": owner, "name": name}
+    result = executeGraphqlQuery(HEAVY_METRICS_QUERY, variables)
+    if not result or "data" not in result or not result["data"]["repository"]:
+        return {"merged_pull_requests": 0, "releases": 0}
+    repo_data = result["data"]["repository"]
+    return {
+        "merged_pull_requests": repo_data["pullRequests"]["totalCount"],
+        "releases": repo_data["releases"]["totalCount"]
+    }
