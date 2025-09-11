@@ -127,3 +127,43 @@ def getHeavyMetrics(owner, name):
         "merged_pull_requests": repo_data["pullRequests"]["totalCount"],
         "releases": repo_data["releases"]["totalCount"]
     }
+
+def cloneRepository(url, dest_folder):
+    repo_name = url.split("/")[-1]
+    repo_path = os.path.join(dest_folder, repo_name)
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    if os.path.exists(repo_path):
+        print(f"Repositório {repo_name} já clonado.")
+        return repo_path
+    try:
+        subprocess.run(["git", "clone", "--depth", "1", url, repo_path], check=True)
+        return repo_path
+    except subprocess.CalledProcessError:
+        print(f"Erro ao clonar {url}")
+        return None
+
+def countJavaLOC(repo_path):
+    loc = 0
+    comment_lines = 0
+    for root, dirs, files in os.walk(repo_path):
+        for file in files:
+            if file.endswith(".java"):
+                file_path = os.path.join(root, file)
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    in_block_comment = False
+                    for line in f:
+                        line_strip = line.strip()
+                        if in_block_comment:
+                            comment_lines += 1
+                            if "*/" in line_strip:
+                                in_block_comment = False
+                            continue
+                        if line_strip.startswith("/*"):
+                            comment_lines += 1
+                            in_block_comment = True
+                        elif line_strip.startswith("//"):
+                            comment_lines += 1
+                        elif line_strip != "":
+                            loc += 1
+    return loc, comment_lines
