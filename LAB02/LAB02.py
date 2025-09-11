@@ -1,9 +1,6 @@
 import requests
 import json
 import csv
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime, timezone
 import time
 import warnings
@@ -17,6 +14,9 @@ GITHUB_TOKEN = ""  # <<< coloque seu token aqui
 
 #URL da API GraphQL do Github
 GRAPHQL_URL = "https://api.github.com/graphql"
+
+#Pasta onde os repositórios serão clonados
+CLONE_DIR = "cloned_repos"
 
 #Headers para autenticação
 HEADERS = {
