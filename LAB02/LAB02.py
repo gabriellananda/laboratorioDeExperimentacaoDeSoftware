@@ -76,3 +76,42 @@ def executeGraphqlQuery(query, variables=None):
     else:
         print(f"HTTP Error {response.status_code}: {response.text}")
         return None
+
+#Função para pegar repositórios básicos
+def getBasicRepositories(limit=100):
+    repositories = []
+    cursor = None
+    fetched = 0
+
+    print(f"Buscando informações básicas de {limit} repositórios Java...")
+    while fetched < limit:
+        remaining_to_fetch = min(100, limit - fetched)
+        variables = {"first": remaining_to_fetch, "after": cursor}
+        result = executeGraphqlQuery(BASIC_REPOS_QUERY, variables)
+        if not result or "data" not in result:
+            print("Erro ao buscar repositórios")
+            break
+
+        # Verificar rate limit
+        rate_limit = result["data"]["rateLimit"]
+        print(f"Rate limit remaining: {rate_limit['remaining']}")
+        if rate_limit["remaining"] < 10:
+            reset_time = datetime.fromisoformat(rate_limit["resetAt"].replace('Z', '+00:00'))
+            wait_time = (reset_time - datetime.now(timezone.utc)).total_seconds()
+            if wait_time > 0:
+                print(f"Rate limit baixo. Aguardando {wait_time:.0f} segundos...")
+                time.sleep(wait_time + 5)
+
+        search_data = result["data"]["search"]
+        repos = search_data["nodes"]
+        repositories.extend(repos)
+        fetched += len(repos)
+
+        # Verificar se há mais páginas
+        if not search_data["pageInfo"]["hasNextPage"] or fetched >= limit:
+            break
+        cursor = search_data["pageInfo"]["endCursor"]
+        time.sleep(1)  # Pausa entre requisições
+
+    print(f"✓ Coletados {len(repositories)} repositórios com informações básicas")
+    return repositories
