@@ -58,3 +58,21 @@ query($owner: String!, $name: String!) {
   }
 }
 """
+
+#Função para executar consultas
+def executeGraphqlQuery(query, variables=None):
+    payload = {
+        "query": query,
+        "variables": variables or {}
+    }
+    response = requests.post(GRAPHQL_URL, headers=HEADERS, json=payload)
+
+    if response.status_code == 200:
+        result = response.json()
+        if "errors" in result:
+            print(f"GraphQL Errors: {result['errors']}")
+            return None
+        return result
+    else:
+        print(f"HTTP Error {response.status_code}: {response.text}")
+        return None
