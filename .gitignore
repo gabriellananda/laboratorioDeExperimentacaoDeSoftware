@@ -1,0 +1,21 @@
+# --- Python/venv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Secrets
+.env
+
+# --- Dados e artefatos gerados
+data/
+repos/
+
+# --- CK / Maven
+ck/target/
+**/target/
+
+# --- IDE / SO
+.vscode/
+.idea/
+.DS_Store
