@@ -6,6 +6,9 @@ import time
 import warnings
 import os
 import subprocess
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 warnings.filterwarnings('ignore')
 
@@ -184,6 +187,8 @@ if __name__ == "__main__":
         repo_path = cloneRepository(repo['url'], CLONE_DIR)
         if repo_path:
             loc, comments = countJavaLOC(repo_path)
+            # Excluir repositório clonado após contagem
+            subprocess.run(["rm", "-rf", repo_path], check=True)
         else:
             loc, comments = 0, 0
 
