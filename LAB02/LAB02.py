@@ -217,3 +217,107 @@ if __name__ == "__main__":
             writer.writerow(row)
 
     print(f"\n✓ Todas as métricas salvas em {csv_filename}")
+
+# Análise Estatística
+df = pd.read_csv(csv_filename)
+
+if not df.empty:
+    # Padronizar para UTC (evita erro tz-aware vs tz-naive)
+    df['createdAt'] = pd.to_datetime(df['createdAt'], utc=True)
+    df['updatedAt'] = pd.to_datetime(df['updatedAt'], utc=True)
+
+    # Usar datetime.now(timezone.utc) para manter consistência
+    now = datetime.now(timezone.utc)
+
+    # Calcula idade do repositório (anos) e dias desde última atualização
+    df['repo_age_years'] = (now - df['createdAt']).dt.days / 365
+    df['days_since_last_update'] = (now - df['updatedAt']).dt.days
+
+    print("\n=== ANÁLISE ESTATÍSTICA DETALHADA ===")
+
+    # Métricas descritivas
+    print("\n1. MÉTRICAS DESCRITIVAS:")
+    print(df[['stars', 'repo_age_years', 'merged_pull_requests',
+              'releases', 'loc', 'comment_lines']].describe())
+
+    # Correlação entre métricas
+    print("\n2. CORRELAÇÕES ENTRE MÉTRICAS:")
+    print(df[['stars', 'repo_age_years', 'merged_pull_requests',
+              'releases', 'loc', 'comment_lines']].corr().round(3))
+
+    # Repositórios ativos nos últimos 30 dias
+    print("\n3. REPOSITÓRIOS MAIS ATIVOS (últimos 30 dias):")
+    active_repos = df[df['days_since_last_update'] <= 30]
+    print(f"   • {len(active_repos)} repositórios ({len(active_repos)/len(df)*100:.1f}%)")
+
+    # Visualizações
+    plt.style.use('default')
+    sns.set_palette("husl")
+    fig = plt.figure(figsize=(20, 20))
+
+    # Distribuição da idade dos repositórios
+    plt.subplot(3, 2, 1)
+    plt.hist(df['repo_age_years'], bins=30, alpha=0.7, color='skyblue', edgecolor='black')
+    plt.title('Distribuição da Idade dos Repositórios')
+    plt.xlabel('Idade (anos)')
+    plt.ylabel('Frequência')
+    plt.grid(True, alpha=0.3)
+
+    # Distribuição de estrelas
+    plt.subplot(3, 2, 2)
+    stars_data = df['stars']
+    stars_95th = stars_data.quantile(0.95)
+    plt.hist(stars_data[stars_data <= stars_95th], bins=30, alpha=0.7, color='orange', edgecolor='black')
+    plt.title('Distribuição de Estrelas (Popularidade)')
+    plt.xlabel('Estrelas')
+    plt.ylabel('Frequência')
+    plt.grid(True, alpha=0.3)
+
+    # Distribuição de releases 
+    plt.subplot(3, 2, 3)
+    releases_data = df['releases']
+    releases_95th = releases_data.quantile(0.95)
+    plt.hist(releases_data[releases_data <= releases_95th], bins=30, alpha=0.7, color='lightgreen', edgecolor='black')
+    plt.title('Distribuição de Releases')
+    plt.xlabel('Número de Releases')
+    plt.ylabel('Frequência')
+    plt.grid(True, alpha=0.3)
+
+    # Distribuição de PRs aceitas 
+    plt.subplot(3, 2, 4)
+    pr_data = df['merged_pull_requests']
+    pr_95th = pr_data.quantile(0.95)
+    plt.hist(pr_data[pr_data <= pr_95th], bins=30, alpha=0.7, color='pink', edgecolor='black')
+    plt.title('Distribuição de Pull Requests Aceitas')
+    plt.xlabel('Número de PRs')
+    plt.ylabel('Frequência')
+    plt.grid(True, alpha=0.3)
+
+    # Distribuição de linhas de código (LOC) 
+    plt.subplot(3, 2, 5)
+    loc_data = df['loc']
+    loc_95th = loc_data.quantile(0.95)
+    plt.hist(loc_data[loc_data <= loc_95th], bins=30, alpha=0.7, color='purple', edgecolor='black')
+    plt.title('Distribuição de Linhas de Código (LOC)')
+    plt.xlabel('LOC')
+    plt.ylabel('Frequência')
+    plt.grid(True, alpha=0.3)
+
+    # Relação Idade vs Estrelas
+    plt.subplot(3, 2, 6)
+    plt.scatter(df['repo_age_years'], df['stars'], alpha=0.6, color='brown')
+    plt.title('Idade vs Estrelas')
+    plt.xlabel('Idade (anos)')
+    plt.ylabel('Estrelas')
+    plt.grid(True, alpha=0.3)
+
+    # Ajusta layout e salva gráfico
+    plt.tight_layout()
+    plt.savefig('github_java_repositories_analysis.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    print("\n✓ Análise completa finalizada!")
+    print("✓ Gráficos salvos como 'github_java_repositories_analysis.png'")
+
+else:
+    print("✗ Não foi possível realizar a análise - dados não disponíveis")
