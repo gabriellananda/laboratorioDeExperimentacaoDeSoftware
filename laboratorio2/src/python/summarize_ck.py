@@ -9,7 +9,8 @@ def find_col(cols, candidates):
             return low[cand.lower()]
     return None
 
-def summarize_repo(input_dir: Path, out_csv: Path):
+
+def summarize_repo(input_dir: Path, out_csv: Path = None):
     class_csv = input_dir / "class.csv"
     if not class_csv.exists():
         raise FileNotFoundError(f"class.csv não encontrado em {input_dir}")
@@ -35,9 +36,12 @@ def summarize_repo(input_dir: Path, out_csv: Path):
         else:
             stats[f"{key}_mean"] = stats[f"{key}_median"] = stats[f"{key}_std"] = None
 
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame([stats]).to_csv(out_csv, index=False)
-    print(f"✓ Resumo salvo em {out_csv}")
+    if out_csv is not None:
+        out_csv = Path(out_csv)
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame([stats]).to_csv(out_csv, index=False)
+        print(f"✓ Resumo salvo em {out_csv}")
+    return stats
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
