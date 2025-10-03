@@ -160,3 +160,20 @@ def getRepoPrCount(owner: str, name: str) -> int:
     waitIfRateLimited(rate_info)
     return resp["data"]["repository"]["pullRequests"]["totalCount"]
     # Obtém a contagem total de pull requests para um repositório específico.
+
+# Funções utilitárias
+# Converte uma string de data e hora para um objeto `datetime` com informações de fuso horário UTC.
+def parseIso(s: Optional[str]) -> Optional[datetime]:
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace('Z', '+00:00')).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+# Converte um valor para um número inteiro de forma segura. Retorna 0 se o valor for `None` ou se ocorrer um erro na conversão.
+def safeInt(value) -> int:
+    try:
+        return int(value) if value is not None else 0
+    except Exception:
+        return 0
