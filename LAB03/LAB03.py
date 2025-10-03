@@ -100,3 +100,52 @@ def executeGraphqlQuery(query: str, variables: dict) -> Optional[dict]:
     if "errors" in data:
         print("GraphQL errors:", data["errors"])
     return data
+
+# Função para pegar repositórios populares
+def getTopRepositories(limit: int = TOP_REPOS_LIMIT) -> List[dict]:
+    repositories = []
+    cursor = None
+    fetched = 0
+    page_size = 50  # buscar em páginas de 50
+
+    print(f"Buscando top {limit} repositórios (paginando em {page_size})...")
+    while fetched < limit:
+        to_fetch = min(page_size, limit - fetched)
+        variables = {"first": to_fetch, "after": cursor}
+        resp = executeGraphqlQuery(SEARCH_REPOS_QUERY, variables)
+        if not resp or "data" not in resp:
+            print("Erro ao buscar repositórios. Encerrando busca.")
+            break
+        rate_info = resp["data"].get("rateLimit")
+        waitIfRateLimited(rate_info)
+
+        search = resp["data"]["search"]
+        nodes = search["nodes"]
+        for n in nodes:
+            repositories.append(n)
+        fetched += len(nodes)
+
+        if not search["pageInfo"]["hasNextPage"]:
+            break
+        cursor = search["pageInfo"]["endCursor"]
+        time.sleep(1)
+
+    print(f"Coletados {len(repositories)} repositórios (brutos)")
+    return repositories
+
+# Função para gerenciar o rate limit da API do GitHub. 
+def waitIfRateLimited(rate_info: dict):
+    if not rate_info:
+        return
+    remaining = rate_info.get("remaining")
+    reset_at = rate_info.get("resetAt")
+    if remaining is None or reset_at is None:
+        return
+    # Se estiver com menos de 10 requests restantes, aguarda até o reset
+    if remaining < 10:
+        reset_dt = datetime.fromisoformat(reset_at.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        wait_seconds = (reset_dt - now).total_seconds()
+        if wait_seconds > 0:
+            print(f"Rate limit baixo ({remaining} restantes). Aguardando {int(wait_seconds)+5}s até reset...")
+            time.sleep(wait_seconds + 5)
