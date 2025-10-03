@@ -25,3 +25,60 @@ MIN_PR_DURATION_SECONDS = 60 * 60  # PRs cuja diferença entre createdAt e close
 # Arquivos de saída
 REPOS_CSV = "selected_repos.csv"
 PRS_CSV = "prs_dataset.csv"
+
+# Queries GraphQL para buscar informações
+SEARCH_REPOS_QUERY = '''
+query($first: Int!, $after: String) {
+  search(query: "stars:>1 sort:stars-desc", type: REPOSITORY, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      ... on Repository {
+        name
+        owner { login }
+        url
+        stargazerCount
+        createdAt
+        updatedAt
+      }
+    }
+  }
+  rateLimit { remaining resetAt }
+}
+'''
+
+# Query para buscar repositórios ordenados por estrelas. Usa paginação (first/after).
+REPO_PR_COUNT_QUERY = '''
+query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: [OPEN, CLOSED, MERGED]) { totalCount }
+  }
+  rateLimit { remaining resetAt }
+}
+'''
+# Query para contar o total de pull requests de um repositório específico.
+PULLS_PAGE_QUERY = '''
+query($owner: String!, $name: String!, $first: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: [MERGED, CLOSED], first: $first, after: $after, orderBy: {field: CREATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        number
+        title
+        url
+        createdAt
+        closedAt
+        mergedAt
+        additions
+        deletions
+        changedFiles
+        bodyText
+        author { login }
+        reviews { totalCount }
+        comments { totalCount }
+        participants { totalCount }
+      }
+    }
+  }
+  rateLimit { remaining resetAt }
+}
+'''
