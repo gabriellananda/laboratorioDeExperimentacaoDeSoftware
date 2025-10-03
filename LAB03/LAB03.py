@@ -27,8 +27,7 @@ REPOS_CSV = "selected_repos.csv"
 PRS_CSV = "prs_dataset.csv"
 
 # Queries GraphQL para buscar informações
-SEARCH_REPOS_QUERY = '''
-query($first: Int!, $after: String) {
+SEARCH_REPOS_QUERY = query($first: Int!, $after: String) {
   search(query: "stars:>1 sort:stars-desc", type: REPOSITORY, first: $first, after: $after) {
     pageInfo { hasNextPage endCursor }
     nodes {
@@ -44,19 +43,19 @@ query($first: Int!, $after: String) {
   }
   rateLimit { remaining resetAt }
 }
-'''
+
 
 # Query para buscar repositórios ordenados por estrelas. Usa paginação (first/after).
-REPO_PR_COUNT_QUERY = '''
+REPO_PR_COUNT_QUERY =
 query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
     pullRequests(states: [OPEN, CLOSED, MERGED]) { totalCount }
   }
   rateLimit { remaining resetAt }
 }
-'''
+
 # Query para contar o total de pull requests de um repositório específico.
-PULLS_PAGE_QUERY = '''
+PULLS_PAGE_QUERY =
 query($owner: String!, $name: String!, $first: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequests(states: [MERGED, CLOSED], first: $first, after: $after, orderBy: {field: CREATED_AT, direction: DESC}) {
@@ -81,7 +80,7 @@ query($owner: String!, $name: String!, $first: Int!, $after: String) {
   }
   rateLimit { remaining resetAt }
 }
-'''
+
 
 # Função para executar consultas
 def executeGraphqlQuery(query: str, variables: dict) -> Optional[dict]:
@@ -161,6 +160,82 @@ def getRepoPrCount(owner: str, name: str) -> int:
     return resp["data"]["repository"]["pullRequests"]["totalCount"]
     # Obtém a contagem total de pull requests para um repositório específico.
 
+# Função para coletar PRs paginados de um repositório e filtrar por critérios do enunciado
+def collectPrsForRepo(owner: str, name: str) -> List[dict]:
+    prs = []
+    cursor = None
+    page_size = 50
+    fetched_pages = 0
+
+    while True:
+        variables = {"owner": owner, "name": name, "first": page_size, "after": cursor}
+        resp = executeGraphqlQuery(PULLS_PAGE_QUERY, variables)
+        if not resp or "data" not in resp:
+            break
+        rate_info = resp["data"].get("rateLimit")
+        waitIfRateLimited(rate_info)
+
+        pulls = resp["data"]["repository"]["pullRequests"]
+        nodes = pulls["nodes"]
+
+        for pr in nodes:
+            # Extrair timestamps
+            created_at = parseIso(pr.get("createdAt"))
+            closed_at = parseIso(pr.get("closedAt"))
+            merged_at = parseIso(pr.get("mergedAt"))
+
+            # Determinar status final
+            status = "MERGED" if merged_at is not None else "CLOSED"
+            final_time = merged_at if merged_at is not None else closed_at
+            if final_time is None:
+                # pular PRs sem fechamento
+                continue
+
+            duration_s = (final_time - created_at).total_seconds()
+
+            # Requisitos do enunciado:
+            # - reviews.totalCount >= 1
+            # - duration > 1 hora
+            reviews_total = safe_int(pr.get("reviews", {}).get("totalCount"))
+            if reviews_total < 1:
+                continue
+            if duration_s <= MIN_PR_DURATION_SECONDS:
+                continue
+
+            # Métricas solicitadas
+            pr_record = {
+                "repo_owner": owner,
+                "repo_name": name,
+                "pr_number": pr.get("number"),
+                "pr_title": pr.get("title"),
+                "pr_url": pr.get("url"),
+                "status": status,
+                "createdAt": pr.get("createdAt"),
+                "closedAt": pr.get("closedAt"),
+                "mergedAt": pr.get("mergedAt"),
+                "time_to_close_seconds": int(duration_s),
+                "additions": safe_int(pr.get("additions")),
+                "deletions": safe_int(pr.get("deletions")),
+                "changed_files": safe_int(pr.get("changedFiles")),
+                "description_length": len(pr.get("bodyText") or ""),
+                "reviews_count": reviews_total,
+                "comments_count": safe_int(pr.get("comments", {}).get("totalCount")),
+                "participants_count": safe_int(pr.get("participants", {}).get("totalCount")),
+                "author": (pr.get("author") or {}).get("login")
+            }
+            prs.append(pr_record)
+
+        # paginação
+        page_info = pulls.get("pageInfo")
+        if not page_info or not page_info.get("hasNextPage"):
+            break
+        cursor = page_info.get("endCursor")
+        fetched_pages += 1
+        # pequeno delay para polidez
+        time.sleep(1)
+
+    return prs
+
 # Funções utilitárias
 # Converte uma string de data e hora para um objeto `datetime` com informações de fuso horário UTC.
 def parseIso(s: Optional[str]) -> Optional[datetime]:
@@ -209,6 +284,32 @@ def main():
         writer.writeheader()
         for rr in selected_repos:
             writer.writerow(rr)
+
+
+    # Para cada repositório selecionado, coletar PRs e aplicar filtros de PR. Salvar os dados em um CSV.
+    all_prs = []
+    for j, rr in enumerate(selected_repos, start=1):
+        owner = rr["owner"]
+        name = rr["name"]
+        print(f"\n[{j}/{len(selected_repos)}] Coletando PRs de {owner}/{name}...")
+        prs = collectPrsForRepo(owner, name)
+        print(f"  -> {len(prs)} PRs após aplicar filtros (reviews>=1 e duração>1h)")
+        all_prs.extend(prs)
+        # salvo parcial para evitar perda se demorar demais
+        with open(PRS_CSV, "w", newline='', encoding='utf-8') as f:
+            fieldnames = [
+                "repo_owner","repo_name","pr_number","pr_title","pr_url","status",
+                "createdAt","closedAt","mergedAt","time_to_close_seconds",
+                "additions","deletions","changed_files","description_length",
+                "reviews_count","comments_count","participants_count","author"
+            ]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for p in all_prs:
+                writer.writerow(p)
+
+    print(f"\n✓ Coleta finalizada. Total de PRs coletados: {len(all_prs)}")
+    print(f"Arquivos gerados: {REPOS_CSV}, {PRS_CSV}")'''
 
 if __name__ == '__main__':
     main()
