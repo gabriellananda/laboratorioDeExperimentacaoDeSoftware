@@ -177,3 +177,30 @@ def safeInt(value) -> int:
         return int(value) if value is not None else 0
     except Exception:
         return 0
+
+def main():
+
+    # Busca e filtra repositórios com um número mínimo de PRs.
+    top_repos = getTopRepositories(TOP_REPOS_LIMIT)
+    
+    print("\nFiltrando repositórios com pelo menos {} PRs (OPEN+CLOSED+MERGED)...".format(MIN_PR_COUNT))
+    selected_repos = []
+    for i, r in enumerate(top_repos, start=1):
+        owner = r["owner"]["login"]
+        name = r["name"]
+        print(f"[{i}/{len(top_repos)}] Checando {owner}/{name}...", end=' ')
+        pr_count = getRepoPrCount(owner, name)
+        print(f"{pr_count} PRs")
+        if pr_count >= MIN_PR_COUNT:
+            selected_repos.append({
+                "owner": owner,
+                "name": name,
+                "url": r.get("url"),
+                "stars": r.get("stargazerCount"),
+                "pr_count": pr_count
+            })
+        # curto delay
+        time.sleep(0.5)
+
+if __name__ == '__main__':
+    main()
