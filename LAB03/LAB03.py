@@ -101,7 +101,7 @@ def executeGraphqlQuery(query: str, variables: dict) -> Optional[dict]:
         print("GraphQL errors:", data["errors"])
     return data
 
-# Função para pegar repositórios populares
+# Função para pegar repositórios populares/selecionados
 def getTopRepositories(limit: int = TOP_REPOS_LIMIT) -> List[dict]:
     repositories = []
     cursor = None
@@ -149,3 +149,14 @@ def waitIfRateLimited(rate_info: dict):
         if wait_seconds > 0:
             print(f"Rate limit baixo ({remaining} restantes). Aguardando {int(wait_seconds)+5}s até reset...")
             time.sleep(wait_seconds + 5)
+
+# Função para filtrar os repositórios com totalCount >= MIN_PR_COUNT
+def getRepoPrCount(owner: str, name: str) -> int:
+    variables = {"owner": owner, "name": name}
+    resp = executeGraphqlQuery(REPO_PR_COUNT_QUERY, variables)
+    if not resp or "data" not in resp or not resp["data"].get("repository"):
+        return 0
+    rate_info = resp["data"].get("rateLimit")
+    waitIfRateLimited(rate_info)
+    return resp["data"]["repository"]["pullRequests"]["totalCount"]
+    # Obtém a contagem total de pull requests para um repositório específico.
