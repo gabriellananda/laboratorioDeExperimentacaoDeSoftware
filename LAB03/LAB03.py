@@ -202,5 +202,13 @@ def main():
         # curto delay
         time.sleep(0.5)
 
+# Salva a lista de repositórios selecionados em um arquivo CSV.
+    print(f"\n✓ {len(selected_repos)} repositórios passaram no filtro (>= {MIN_PR_COUNT} PRs). Salvando {REPOS_CSV}...")
+    with open(REPOS_CSV, "w", newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=["owner", "name", "url", "stars", "pr_count"])
+        writer.writeheader()
+        for rr in selected_repos:
+            writer.writerow(rr)
+
 if __name__ == '__main__':
     main()
