@@ -82,3 +82,21 @@ query($owner: String!, $name: String!, $first: Int!, $after: String) {
   rateLimit { remaining resetAt }
 }
 '''
+
+# Função para executar consultas
+def executeGraphqlQuery(query: str, variables: dict) -> Optional[dict]:
+    payload = {"query": query, "variables": variables}
+    try:
+        r = requests.post(GRAPHQL_URL, headers=HEADERS, json=payload)
+    except requests.RequestException as e:
+        print("Erro de rede ao chamar GraphQL:", e)
+        return None
+
+    if r.status_code != 200:
+        print(f"HTTP {r.status_code} - {r.text}")
+        return None
+
+    data = r.json()
+    if "errors" in data:
+        print("GraphQL errors:", data["errors"])
+    return data
