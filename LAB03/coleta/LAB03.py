@@ -311,7 +311,7 @@ def main():
                 writer.writerow(p)
 
     print(f"\n✓ Coleta finalizada. Total de PRs coletados: {len(all_prs)}")
-    print(f"Arquivos gerados: {REPOS_CSV}, {PRS_CSV}")'''
+    print(f"Arquivos gerados: {REPOS_CSV}, {PRS_CSV}")
 
 if __name__ == '__main__':
     main()
