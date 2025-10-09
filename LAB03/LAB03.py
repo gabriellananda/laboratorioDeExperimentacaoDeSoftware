@@ -27,7 +27,7 @@ REPOS_CSV = "selected_repos.csv"
 PRS_CSV = "prs_dataset.csv"
 
 # Queries GraphQL para buscar informações
-SEARCH_REPOS_QUERY = query($first: Int!, $after: String) {
+SEARCH_REPOS_QUERY = '''query($first: Int!, $after: String) {
   search(query: "stars:>1 sort:stars-desc", type: REPOSITORY, first: $first, after: $after) {
     pageInfo { hasNextPage endCursor }
     nodes {
@@ -43,19 +43,21 @@ SEARCH_REPOS_QUERY = query($first: Int!, $after: String) {
   }
   rateLimit { remaining resetAt }
 }
+'''
 
 
 # Query para buscar repositórios ordenados por estrelas. Usa paginação (first/after).
-REPO_PR_COUNT_QUERY =
+REPO_PR_COUNT_QUERY = '''
 query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
     pullRequests(states: [OPEN, CLOSED, MERGED]) { totalCount }
   }
   rateLimit { remaining resetAt }
 }
+'''
 
 # Query para contar o total de pull requests de um repositório específico.
-PULLS_PAGE_QUERY =
+PULLS_PAGE_QUERY ='''
 query($owner: String!, $name: String!, $first: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequests(states: [MERGED, CLOSED], first: $first, after: $after, orderBy: {field: CREATED_AT, direction: DESC}) {
@@ -80,7 +82,7 @@ query($owner: String!, $name: String!, $first: Int!, $after: String) {
   }
   rateLimit { remaining resetAt }
 }
-
+'''
 
 # Função para executar consultas
 def executeGraphqlQuery(query: str, variables: dict) -> Optional[dict]:
@@ -196,7 +198,7 @@ def collectPrsForRepo(owner: str, name: str) -> List[dict]:
             # Requisitos do enunciado:
             # - reviews.totalCount >= 1
             # - duration > 1 hora
-            reviews_total = safe_int(pr.get("reviews", {}).get("totalCount"))
+            reviews_total = safeInt(pr.get("reviews", {}).get("totalCount"))
             if reviews_total < 1:
                 continue
             if duration_s <= MIN_PR_DURATION_SECONDS:
@@ -214,13 +216,13 @@ def collectPrsForRepo(owner: str, name: str) -> List[dict]:
                 "closedAt": pr.get("closedAt"),
                 "mergedAt": pr.get("mergedAt"),
                 "time_to_close_seconds": int(duration_s),
-                "additions": safe_int(pr.get("additions")),
-                "deletions": safe_int(pr.get("deletions")),
-                "changed_files": safe_int(pr.get("changedFiles")),
+                "additions": safeInt(pr.get("additions")),
+                "deletions": safeInt(pr.get("deletions")),
+                "changed_files": safeInt(pr.get("changedFiles")),
                 "description_length": len(pr.get("bodyText") or ""),
                 "reviews_count": reviews_total,
-                "comments_count": safe_int(pr.get("comments", {}).get("totalCount")),
-                "participants_count": safe_int(pr.get("participants", {}).get("totalCount")),
+                "comments_count": safeInt(pr.get("comments", {}).get("totalCount")),
+                "participants_count": safeInt(pr.get("participants", {}).get("totalCount")),
                 "author": (pr.get("author") or {}).get("login")
             }
             prs.append(pr_record)
